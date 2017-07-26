@@ -18,26 +18,44 @@ package com.google.firebase.quickstart.fcm;
 
 import android.app.NotificationChannel;
 import android.app.NotificationManager;
+import android.content.BroadcastReceiver;
 import android.content.Context;
+import android.content.Intent;
+import android.content.IntentFilter;
 import android.os.Build;
 import android.os.Bundle;
+import android.speech.tts.TextToSpeech;
+import android.support.v4.content.LocalBroadcastManager;
 import android.support.v7.app.AppCompatActivity;
 import android.util.Log;
 import android.view.View;
 import android.widget.Button;
 import android.widget.Toast;
+import android.widget.TextView;
 
 import com.google.firebase.iid.FirebaseInstanceId;
 import com.google.firebase.messaging.FirebaseMessaging;
 
-public class MainActivity extends AppCompatActivity {
+import java.text.SimpleDateFormat;
+import java.util.Date;
+import java.util.Locale;
+
+public class MainActivity extends AppCompatActivity implements TextToSpeech.OnInitListener {
 
     private static final String TAG = "MainActivity";
+    private TextToSpeech tts;
+    String[] notifications = {"Notification from Facebook: John added you as a friend.", "Notification from SMS: Don said, please be present for the meeting", "Notification from Phone: Missed call by Prateek", "Notfication from Outlook: Meeting in 15 minutes - Lab Sabha in MPR", "Notification from Outlook: You have 5 new emails and 2 calender invites."};
+    int not_index = 0;
+    boolean busy_flag = false;
+
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
+        tts = new TextToSpeech(this, this);
+
+
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             // Create channel to show notifications.
@@ -65,6 +83,7 @@ public class MainActivity extends AppCompatActivity {
             }
         }
         // [END handle_data_extras]
+
 
         Button subscribeButton = (Button) findViewById(R.id.subscribeButton);
         subscribeButton.setOnClickListener(new View.OnClickListener() {
@@ -94,6 +113,115 @@ public class MainActivity extends AppCompatActivity {
                 Toast.makeText(MainActivity.this, msg, Toast.LENGTH_SHORT).show();
             }
         });
+    }
+
+    private BroadcastReceiver broadcastReceiver = new BroadcastReceiver() {
+        @Override
+        public void onReceive(Context context, Intent intent) {
+            String gesture = intent.getStringExtra("GestureName");  //get the type of message from MyGcmListenerService 1 - lock or 0 -Unlock
+            gesture = gesture.substring(0, gesture.length() - 1);
+
+            Log.d("MainActivity", gesture);
+
+
+            switch(gesture)
+            {
+
+                case "tap":
+                    SimpleDateFormat sdf = new SimpleDateFormat("HH:mm:ss");
+                    String str = sdf.format(new Date());
+                    speakOut("The time is " + str);
+                    break;
+                case"leftTwist":
+                    if(not_index >=2) {
+                        not_index = not_index - 2;
+                        Log.v("not_index", String.valueOf(not_index));
+                        speakOut(notifications[not_index]);
+                    }
+                    else if(not_index == 1)
+                    {
+                        not_index = not_index - 1;
+                        Log.v("not_index", String.valueOf(not_index));
+                        speakOut(notifications[not_index]);
+
+                    }
+                    else{
+                        speakOut("You have 5 notifications.");
+
+                    }
+
+                    break;
+                case "rightTwist":
+                    if(not_index == 0)
+                    {
+                        Log.v("not_index", String.valueOf(not_index));
+                        speakOut("You have 5 notifications.");
+                        speakOut(notifications[not_index]);
+                        if(not_index <5) {
+                            not_index = not_index + 1;
+                        }
+
+                    }
+                    else
+                    {
+
+                        Log.v("not_index", String.valueOf(not_index));
+                        speakOut(notifications[not_index]);
+                        if(not_index <5) {
+                            not_index = not_index + 1;
+                        }
+
+                    }
+                    break;
+
+            }
+
+
+            //speakOut(gesture);
+        }
+
+    };
+
+    @Override
+    protected void onResume()
+    {
+        super.onResume();
+        //registerReceiver(statusReceiver,mIntent);
+        LocalBroadcastManager.getInstance(MainActivity.this).registerReceiver(broadcastReceiver, new IntentFilter("Gesture"));
+    }
+
+    @Override
+    public void onInit(int i) {
+
+        if (i == TextToSpeech.SUCCESS) {
+
+            int result = tts.setLanguage(Locale.US);
+
+            if (result == TextToSpeech.LANG_MISSING_DATA
+                    || result == TextToSpeech.LANG_NOT_SUPPORTED) {
+                Log.e("TTS", "This Language is not supported");
+            } else {
+
+                speakOut("Hello, I am connected to Smart Stick.");            }
+
+        } else {
+            Log.e("TTS", "Initilization Failed!");
+        }
+
+
+    }
+    public void onDestroy() {
+        // Don't forget to shutdown tts!
+        if (tts != null) {
+            tts.stop();
+            tts.shutdown();
+        }
+        super.onDestroy();
+    }
+
+    private void speakOut(String text) {
+
+        tts.speak(text, TextToSpeech.QUEUE_ADD, null,"id1");
     }
 
 }

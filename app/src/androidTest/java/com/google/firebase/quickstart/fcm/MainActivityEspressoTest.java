@@ -20,6 +20,7 @@ import android.support.test.rule.ActivityTestRule;
 import android.support.test.runner.AndroidJUnit4;
 import android.test.suitebuilder.annotation.LargeTest;
 import android.view.View;
+import android.widget.TextView;
 
 import org.junit.Rule;
 import org.junit.Test;

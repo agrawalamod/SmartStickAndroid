@@ -20,9 +20,13 @@ import android.app.NotificationManager;
 import android.app.PendingIntent;
 import android.content.Context;
 import android.content.Intent;
+import android.media.AudioManager;
 import android.media.RingtoneManager;
 import android.net.Uri;
+import android.os.Bundle;
+import android.speech.tts.TextToSpeech;
 import android.support.v4.app.NotificationCompat;
+import android.support.v4.content.LocalBroadcastManager;
 import android.util.Log;
 
 import com.firebase.jobdispatcher.Constraint;
@@ -32,16 +36,21 @@ import com.firebase.jobdispatcher.Job;
 import com.google.firebase.messaging.FirebaseMessagingService;
 import com.google.firebase.messaging.RemoteMessage;
 
-public class MyFirebaseMessagingService extends FirebaseMessagingService {
+import java.util.Locale;
+
+public class MyFirebaseMessagingService extends FirebaseMessagingService implements TextToSpeech.OnInitListener {
 
     private static final String TAG = "MyFirebaseMsgService";
+    private TextToSpeech tts;
 
-    /**
-     * Called when message is received.
-     *
-     * @param remoteMessage Object representing the message received from Firebase Cloud Messaging.
-     */
-    // [START receive_message]
+
+
+    public void onCreate(){
+
+        Log.v("Service", "Started");
+        tts = new TextToSpeech(this, this);
+        super.onCreate();
+    }
     @Override
     public void onMessageReceived(RemoteMessage remoteMessage) {
         // [START_EXCLUDE]
@@ -62,10 +71,20 @@ public class MyFirebaseMessagingService extends FirebaseMessagingService {
         if (remoteMessage.getData().size() > 0) {
             Log.d(TAG, "Message data payload: " + remoteMessage.getData());
 
+
             if (/* Check if data needs to be processed by long running job */ true) {
                 // For long-running tasks (10 seconds or more) use Firebase Job Dispatcher.
                 //scheduleJob();
                 sendNotification(remoteMessage.getData().toString());
+                String msg = remoteMessage.getData().toString().split("=")[1];
+                Log.v("Notification", msg);
+                Intent intent = new Intent("Gesture");
+                // You can also include some extra data.
+                intent.putExtra("GestureName", msg);
+                Bundle b = new Bundle();
+                LocalBroadcastManager.getInstance(this).sendBroadcast(intent);
+
+
             } else {
                 // Handle message within 10 seconds
                 handleNow();
@@ -121,12 +140,51 @@ public class MyFirebaseMessagingService extends FirebaseMessagingService {
                 .setContentTitle("FCM Message")
                 .setContentText(messageBody)
                 .setAutoCancel(true)
-                .setSound(defaultSoundUri)
+                .setSound(null)
                 .setContentIntent(pendingIntent);
 
         NotificationManager notificationManager =
                 (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
 
         notificationManager.notify(0 /* ID of notification */, notificationBuilder.build());
+    }
+
+    @Override
+    public void onInit(int status) {
+        if (status == TextToSpeech.SUCCESS) {
+            Log.v("Service", "Intialization SUCCESS");
+
+            int result = tts.setLanguage(Locale.US);
+
+            if (result == TextToSpeech.LANG_MISSING_DATA
+                    || result == TextToSpeech.LANG_NOT_SUPPORTED) {
+                Log.e("TTS", "This Language is not supported");
+            } else {
+                Log.v("TTS", "We're good to go");
+
+            }
+
+        } else {
+            Log.e("TTS", "Initilization Failed!");
+        }
+
+    }
+    private void speakOut(String text) {
+        AudioManager am = (AudioManager)getSystemService(Context.AUDIO_SERVICE);
+        int amStreamMusicMaxVol = am.getStreamMaxVolume(am.STREAM_MUSIC);
+        am.setStreamVolume(am.STREAM_MUSIC, amStreamMusicMaxVol, 0);
+        tts.speak(text, TextToSpeech.QUEUE_FLUSH, null,"id1");
+    }
+    public void onDestroy() {
+
+
+        //Close the Text to Speech Library
+        if(tts != null) {
+
+            tts.stop();
+            tts.shutdown();
+            Log.d(TAG, "TTS Destroyed");
+        }
+        super.onDestroy();
     }
 }
