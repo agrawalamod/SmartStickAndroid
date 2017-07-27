@@ -44,9 +44,10 @@ public class MainActivity extends AppCompatActivity implements TextToSpeech.OnIn
 
     private static final String TAG = "MainActivity";
     private TextToSpeech tts;
-    String[] notifications = {"Notification from Facebook: John added you as a friend.", "Notification from SMS: Don said, please be present for the meeting", "Notification from Phone: Missed call by Prateek", "Notfication from Outlook: Meeting in 15 minutes - Lab Sabha in MPR", "Notification from Outlook: You have 5 new emails and 2 calender invites."};
+    String[] notifications = {"Notification from Facebook: John added you as a friend.", "Notification from SMS: Don said, please be present for the meeting", "Notification from Phone: Missed call by Prateek", "Notfication from Outlook: Meeting in 15 minutes - Lab Sabha in MPR", "Notification from Outlook: You have 5 new emails and 2 calender invites.", "End of your notifications"};
     int not_index = 0;
-    boolean busy_flag = false;
+    public long time_received;
+    public long new_time_received;
 
 
     @Override
@@ -54,7 +55,6 @@ public class MainActivity extends AppCompatActivity implements TextToSpeech.OnIn
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
         tts = new TextToSpeech(this, this);
-
 
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
@@ -113,6 +113,8 @@ public class MainActivity extends AppCompatActivity implements TextToSpeech.OnIn
                 Toast.makeText(MainActivity.this, msg, Toast.LENGTH_SHORT).show();
             }
         });
+
+        time_received = System.currentTimeMillis();
     }
 
     private BroadcastReceiver broadcastReceiver = new BroadcastReceiver() {
@@ -122,62 +124,71 @@ public class MainActivity extends AppCompatActivity implements TextToSpeech.OnIn
             gesture = gesture.substring(0, gesture.length() - 1);
 
             Log.d("MainActivity", gesture);
+            new_time_received = System.currentTimeMillis();
+
+            Log.v("TimeReceived", Long.toString(time_received) + ", " + Long.toString(new_time_received) + ", " + Long.toString(new_time_received- time_received));
+            if (new_time_received - time_received > 3000) {
+                time_received = new_time_received;
 
 
-            switch(gesture)
-            {
+                switch (gesture) {
 
-                case "tap":
-                    SimpleDateFormat sdf = new SimpleDateFormat("HH:mm:ss");
-                    String str = sdf.format(new Date());
-                    speakOut("The time is " + str);
-                    break;
-                case"leftTwist":
-                    if(not_index >=2) {
-                        not_index = not_index - 2;
-                        Log.v("not_index", String.valueOf(not_index));
-                        speakOut(notifications[not_index]);
-                    }
-                    else if(not_index == 1)
-                    {
-                        not_index = not_index - 1;
-                        Log.v("not_index", String.valueOf(not_index));
-                        speakOut(notifications[not_index]);
+                    case "tap":
+                        SimpleDateFormat sdf = new SimpleDateFormat("HH:mm:ss");
+                        String str = sdf.format(new Date());
+                        Toast.makeText(MainActivity.this, "The time is " + str, Toast.LENGTH_SHORT).show();
+                        speakOut("The time is " + str);
+                        break;
+                    case "leftTwist":
+                        if (not_index >= 2) {
+                            not_index = not_index - 2;
+                            Log.v("not_index", String.valueOf(not_index));
+                            Toast.makeText(MainActivity.this, notifications[not_index], Toast.LENGTH_SHORT).show();
+                            speakOut(notifications[not_index]);
+                        } else if (not_index == 1) {
+                            not_index = not_index - 1;
+                            Log.v("not_index", String.valueOf(not_index));
+                            Toast.makeText(MainActivity.this, notifications[not_index], Toast.LENGTH_SHORT).show();
+                            speakOut(notifications[not_index]);
 
-                    }
-                    else{
-                        speakOut("You have 5 notifications.");
+                        } else {
+                            Toast.makeText(MainActivity.this, "You have 5 notifications.", Toast.LENGTH_SHORT).show();
+                            speakOut("You have 5 notifications.");
 
-                    }
-
-                    break;
-                case "rightTwist":
-                    if(not_index == 0)
-                    {
-                        Log.v("not_index", String.valueOf(not_index));
-                        speakOut("You have 5 notifications.");
-                        speakOut(notifications[not_index]);
-                        if(not_index <5) {
-                            not_index = not_index + 1;
                         }
 
-                    }
-                    else
-                    {
+                        break;
+                    case "rightTwist":
+                        if (not_index == 0) {
+                            Log.v("not_index", String.valueOf(not_index));
+                            speakOut("You have 5 notifications.");
+                            Toast.makeText(MainActivity.this, notifications[not_index], Toast.LENGTH_SHORT).show();
+                            speakOut(notifications[not_index]);
+                            if (not_index < 6) {
+                                not_index = not_index + 1;
+                            }
 
-                        Log.v("not_index", String.valueOf(not_index));
-                        speakOut(notifications[not_index]);
-                        if(not_index <5) {
-                            not_index = not_index + 1;
+                        } else {
+
+                            Log.v("not_index", String.valueOf(not_index));
+                            Toast.makeText(MainActivity.this, notifications[not_index], Toast.LENGTH_SHORT).show();
+                            speakOut(notifications[not_index]);
+                            if (not_index < 6) {
+                                not_index = not_index + 1;
+                            }
+
                         }
+                        break;
 
-                    }
-                    break;
+                }
 
+
+                //speakOut(gesture);
             }
-
-
-            //speakOut(gesture);
+            else
+            {
+                Log.v("TimeDelay", "Tooo soon!!!");
+            }
         }
 
     };
